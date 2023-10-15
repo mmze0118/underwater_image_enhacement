@@ -60,9 +60,9 @@ else:
     DEVICE = torch.device('cpu')
 
 # Set data pipeline
-img_width, img_height, channels = opt.input_width, opt.input_height, 3
-transforms_ = [transforms.Resize((img_height, img_width), transforms.InterpolationMode.BICUBIC),
-               transforms.ToTensor(),
+# img_width, img_height = opt.input_width, opt.input_height
+channels = 3
+transforms_ = [transforms.ToTensor(),
                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),]
 transform = transforms.Compose(transforms_)
 test_files = []
@@ -88,17 +88,33 @@ for path in test_files:
     s = time.time()
     with torch.no_grad():
         gen_img = model(inp_img)
-    times.append(time.time()-s)
-    # save output image
+    times.append(time.time() - s)
+
+    # Save output image without resizing
     img_sample_paired = torch.cat((inp_img.data, gen_img.data), -1)
-    save_image(img_sample_paired, join(opt.result_dir,    opt.test_name, 'paired', basename(path)), normalize=True)
-    save_image(inp_img.data, os.path.join(opt.result_dir, opt.test_name, 'single/input', basename(path)), normalize=True)
-    save_image(gen_img.data, os.path.join(opt.result_dir, opt.test_name, 'single/predicted', basename(path)), normalize=True)
+    save_image(
+        img_sample_paired,
+        join(opt.result_dir, opt.test_name, 'paired', basename(path)),
+        scale_each=True,  # Maintain the scale
+        normalize=True    # Normalize the image
+    )
+    save_image(
+        inp_img.data,
+        os.path.join(opt.result_dir, opt.test_name, 'single/input', basename(path)),
+        scale_each=True,  # Maintain the scale
+        normalize=True    # Normalize the image
+    )
+    save_image(
+        gen_img.data,
+        os.path.join(opt.result_dir, opt.test_name, 'single/predicted', basename(path)),
+        scale_each=True,  # Maintain the scale
+        normalize=True    # Normalize the image
+    )
     logger.info(f"Tested: {path}")
 
 # Output summary logs
 if (len(times) > 1):
-    logger.info("Total samples: {:d}".format(len(test_files))) 
+    logger.info("Total samples: {:d}".format(len(test_files)))
     total_time, mean_time = np.sum(times), np.mean(times)
     logger.info("Time taken: {:.3f} sec at {:.3f} fps".format(total_time, 1./mean_time))
     logger.info("Saved enhanced images in {}\n".format(opt.result_dir))
